@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from typing import List
 import requests
 from utils import calculate_energy
+from flask import Flask, render_template, request
+from fastapi.middleware.wsgi import WSGIMiddleware
 
+# FastAPI application
 app = FastAPI()
-
 
 class WeatherData(BaseModel):
     date: str
@@ -14,12 +16,11 @@ class WeatherData(BaseModel):
     max_temp: float
     energy: float
 
-
 @app.get("/weather", response_model=List[WeatherData])
 async def get_weather(lat: float, lon: float):
     try:
         response = requests.get(
-            f"https://api.open-meteo.com/v1/forecast",
+            "https://api.open-meteo.com/v1/forecast",
             params={
                 "latitude": lat,
                 "longitude": lon,
@@ -28,75 +29,46 @@ async def get_weather(lat: float, lon: float):
             }
         )
         response.raise_for_status()
-        data = response.json()
+        data = response.json()['daily']
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     weather_list = []
-    for i in range(7):
-        day_data = data['daily'][i]
-        energy = calculate_energy(day_data['shortwave_radiation_sum'])
+    for i in range(len(data['time'])):
+        energy = calculate_energy(data['shortwave_radiation_sum'][i])
         weather = WeatherData(
-            date=day_data['time'],
-            weather_code=day_data['weathercode'],
-            min_temp=day_data['temperature_2m_min'],
-            max_temp=day_data['temperature_2m_max'],
+            date=data['time'][i],
+            weather_code=0,  # Assuming default weather code as Open-Meteo might not provide it directly
+            min_temp=data['temperature_2m_min'][i],
+            max_temp=data['temperature_2m_max'][i],
             energy=energy
         )
         weather_list.append(weather)
 
     return weather_list
-@app.get("/sample_weather", response_model=List[WeatherData])
-async def get_sample_weather():
-    sample_data = [
-        {
-            "date": "2023-05-01",
-            "weather_code": 1,
-            "min_temp": 15.0,
-            "max_temp": 25.0,
-            "energy": 5.0
-        },
-        {
-            "date": "2023-05-02",
-            "weather_code": 2,
-            "min_temp": 14.0,
-            "max_temp": 24.0,
-            "energy": 4.8
-        },
-        {
-            "date": "2023-05-03",
-            "weather_code": 3,
-            "min_temp": 13.0,
-            "max_temp": 23.0,
-            "energy": 4.5
-        },
-        {
-            "date": "2023-05-04",
-            "weather_code": 4,
-            "min_temp": 12.0,
-            "max_temp": 22.0,
-            "energy": 4.2
-        },
-        {
-            "date": "2023-05-05",
-            "weather_code": 5,
-            "min_temp": 11.0,
-            "max_temp": 21.0,
-            "energy": 3.9
-        },
-        {
-            "date": "2023-05-06",
-            "weather_code": 6,
-            "min_temp": 10.0,
-            "max_temp": 20.0,
-            "energy": 3.7
-        },
-        {
-            "date": "2023-05-07",
-            "weather_code": 7,
-            "min_temp": 9.0,
-            "max_temp": 19.0,
-            "energy": 3.5
-        }
-    ]
-    return sample_data
+
+# Flask application
+flask_app = Flask(__name__)
+
+@flask_app.route('/')
+def index():
+    return render_template('index.html')
+
+@flask_app.route('/weather', methods=['POST'])
+def weather():
+    lat = request.form['latitude']
+    lon = request.form['longitude']
+    try:
+        response = requests.get(
+            f"http://127.0.0.1:8000/weather",  # Use the actual URL of your deployed backend service
+            params={"lat": lat, "lon": lon}
+        )
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        return f"Error: {e}"
+
+    return render_template('index.html', weather_data=data)
+
+# Mount the Flask application on the FastAPI application
+app.mount("/", WSGIMiddleware(flask_app))

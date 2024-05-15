@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Forecast</h1>
+        <form method="post" action="/weather">
+            <label for="latitude">Latitude:</label>
+            <input type="text" id="latitude" name="latitude" required>
+            <label for="longitude">Longitude:</label>
+            <input type="text" id="longitude" name="longitude" required>
+            <button type="submit">Get Weather</button>
+        </form>
+        {% if weather_data %}
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Weather Code</th>
+                    <th>Min Temp</th>
+                    <th>Max Temp</th>
+                    <th>Estimated Energy (kWh)</th>
+                </tr>
+                {% for day in weather_data %}
+                <tr>
+                    <td>{{ day.date }}</td>
+                    <td>{{ day.weather_code }}</td>
+                    <td>{{ day.min_temp }}</td>
+                    <td>{{ day.max_temp }}</td>
+                    <td>{{ day.energy }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        {% endif %}
+    </div>
+</body>
+</html>
