@@ -60,7 +60,7 @@ def weather():
     lon = request.form['longitude']
     try:
         response = requests.get(
-            f"https://weather-app-1-hskc.onrender.com",  # Use the actual URL of your deployed backend service
+            f"https://weather-app-1-hskc.onrender.com/weather",  # Use the actual URL of your deployed backend service
             params={"lat": lat, "lon": lon}
         )
         response.raise_for_status()
